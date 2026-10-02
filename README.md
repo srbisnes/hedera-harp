@@ -2,273 +2,225 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hedera](https://img.shields.io/badge/Hedera-Network-4B5EFF.svg)](https://hedera.com/)
-[![IoT Security](https://img.shields.io/badge/IoT-Security-0EA5E9.svg)](https://www.nist.gov/topics/internet-things-iot)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF.svg)](https://vite.dev/)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-F59E0B.svg)](#roadmap)
-[![License](https://img.shields.io/badge/Contributions-Welcome-22C55E.svg)](#contributing)
 
-> **HARP (Hedera Shield Protocol)** is a security architecture for IoT environments that combines edge telemetry, threat detection, automated response workflows and verifiable security-event records using Hedera.
+> **HARP (Hedera Shield Protocol)** is an IoT security architecture and interactive MVP that combines edge-device monitoring, threat/event simulation, security workflows and verifiable event evidence around the Hedera ecosystem.
 
-**Live demo:** deployable as a static web application on Vercel.  
-**Repository:** [Hedera Shield Protocol](https://github.com/srbisnes/hedera-harp)
+## What HARP is
 
----
-
-## Overview
-
-IoT expands the attack surface of industrial environments, logistics networks, smart infrastructure and connected devices. HARP is designed as a **trust and evidence layer** between edge telemetry and security operations.
-
-The architecture separates fast local detection from durable, independently verifiable event evidence:
+HARP is designed as a **security and evidence layer for connected infrastructure**. The application separates device/edge telemetry from the trust layer:
 
 ```text
-┌──────────────────────┐
-│      IoT Devices     │
-│ sensors / gateways   │
-└──────────┬───────────┘
-           │ telemetry
-           ▼
-┌──────────────────────┐
-│      HARP Agent      │
-│ edge integrity +     │
-│ local anomaly checks │
-└──────────┬───────────┘
-           │ normalized events
-           ▼
-┌──────────────────────┐
-│ Threat Detection     │
-│ Engine               │
-│ correlation + rules  │
-└──────────┬───────────┘
-           │ security events
-           ▼
-┌──────────────────────┐
-│ Hedera Consensus     │
-│ Service (HCS)        │
-│ ordered + timestamped│
-│ consensus records    │
-└──────────┬───────────┘
-           │ evidence
-           ▼
-┌──────────────────────┐
-│ Security Dashboard   │
-│ alerts / audit /     │
-│ device posture       │
-└──────────────────────┘
+IoT / Edge Devices
+        │
+        ▼
+┌─────────────────────┐
+│ HARP Agent          │
+│ integrity + signals │
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐
+│ Detection / Policy  │
+│ correlation + risk  │
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐
+│ Hedera HCS          │
+│ consensus evidence  │
+└─────────┬───────────┘
+          ▼
+┌─────────────────────┐
+│ Security Console    │
+│ alerts + audit      │
+└─────────────────────┘
 ```
 
-HARP does **not** put sensitive telemetry on a public ledger by default. A production implementation should keep raw data off-ledger and anchor only the minimum evidence needed for verification.
+The current repository is an **interactive MVP/simulation**, not a production security platform or an independently audited system. This distinction is intentional: the UI demonstrates the operating model while the integration boundaries remain explicit.
 
-## Core Objectives
+## Current MVP
 
-- Detect abnormal device behavior close to the edge.
-- Establish a consistent security-event format.
-- Correlate events before escalation.
-- Anchor selected event evidence through Hedera Consensus Service.
-- Provide an operator-facing security dashboard.
-- Support auditable incident timelines.
-- Create a foundation for automated response and predictive security.
+The React application currently includes:
 
-## Architecture
+- 📡 IoT node/device management UI.
+- 📊 Sensor and telemetry dashboards.
+- 🧪 Security-event and incident simulations.
+- 🔗 Hedera Consensus Service (HCS) event-flow simulation.
+- 💰 Conditional escrow workflow simulation tied to security evidence.
+- 🔐 Biometric/critical-action UX simulation.
+- 🔔 Notifications and operator alerts.
+- 🤖 Swarm/agent-oriented security interaction UI.
+- 🗺️ Architecture/blueprint visualization.
+- 👤 Local/demo authentication flow.
+- 📱 Responsive mobile-oriented security console.
 
-### 1. HARP Agent
+### Important implementation note
 
-Runs on an IoT gateway or edge node.
+The repository contains mock services for hardware, HCS and some authentication/agent interactions. They are **simulation boundaries**, not claims of live production infrastructure.
 
-**Responsibilities**
-- Collect device telemetry.
-- Validate message structure and integrity metadata.
-- Apply local rules and anomaly checks.
-- Normalize events before forwarding them.
-- Communicate with the control plane through authenticated channels.
+Before production use, replace mock services with authenticated integrations, define threat models and key-management procedures, add observability, and complete independent security testing.
 
-### 2. Threat Detection Engine
+## Hedera Architecture
 
-The analytical layer responsible for converting telemetry into security signals.
+### Hedera Consensus Service
 
-**Initial capabilities**
-- Rule-based anomaly detection.
-- Event correlation.
-- Severity classification.
-- Device risk scoring.
-- Alert generation.
-- Response-policy evaluation.
+HCS is the primary proposed trust primitive. HARP can use consensus messages to establish an ordered and timestamped record of selected security events.
 
-Future versions can add statistical and ML-based detection without coupling the detection engine to the ledger.
+Raw telemetry should normally remain off-ledger. A production design should anchor only the minimum evidence required for independent verification, such as event identifiers, hashes and relevant metadata.
 
-### 3. Hedera Layer
+### Hedera Token Service
 
-HARP is designed to integrate with:
+HTS is an optional extension for use cases involving tokenized credentials, assets, incentives or other explicitly justified token primitives. It is not required for the core HARP event pipeline.
 
-- **Hedera Consensus Service (HCS)** for ordered, timestamped consensus messages and security-event evidence.
-- **Hedera Token Service (HTS)** where a future product requirement genuinely benefits from tokenized assets or credentials.
-- **Hedera Smart Contracts / EVM** for programmable verification and ecosystem integrations.
+### Hedera Smart Contracts / EVM
 
-HCS is the primary ledger primitive in the current architecture. HTS and smart contracts are optional extensions, not requirements for the core security pipeline.
-
-### 4. Security Dashboard
-
-The included web interface provides a professional MVP surface for:
-
-- Device posture.
-- Active alerts.
-- Event throughput.
-- Severity distribution.
-- Recent security events.
-- Architecture visibility.
-- Demo-mode response actions.
-
-The dashboard is intentionally transparent about demo data: it is an operational UI prototype, not a claim that a production security backend is already connected.
-
-## Event Model
-
-A normalized HARP event can be represented conceptually as:
-
-```json
-{
-  "eventId": "evt_01",
-  "deviceId": "edge-gateway-07",
-  "timestamp": "2026-10-02T13:00:00Z",
-  "type": "anomaly.detected",
-  "severity": "high",
-  "signal": "unexpected-command-rate",
-  "evidenceHash": "sha256:...",
-  "source": "edge-agent"
-}
-```
-
-Production deployments should define authentication, replay protection, key rotation, retention, privacy and incident-response policies before connecting real infrastructure.
+Smart contracts can provide programmable verification or settlement workflows where required. The current MVP treats these as integration boundaries rather than claiming a production contract deployment.
 
 ## Security Model
 
 HARP follows a defense-in-depth model:
 
-1. **Edge validation** — reject malformed or unauthenticated telemetry.
-2. **Local detection** — detect high-signal anomalies without waiting for a remote service.
-3. **Central correlation** — combine signals across devices and time windows.
-4. **Evidence anchoring** — submit selected event evidence to HCS.
-5. **Operator response** — route alerts to security workflows.
+1. **Edge validation** — validate device messages before central processing.
+2. **Local detection** — detect high-signal anomalies close to the source.
+3. **Correlation** — combine signals across devices and time.
+4. **Evidence anchoring** — record selected evidence through HCS.
+5. **Response workflow** — route high-severity events to operator actions.
 6. **Audit trail** — preserve a verifiable incident timeline.
 
-### Important security boundary
+### Security boundary
 
-HARP is an architecture and active-development MVP. It is **not an audited security product** and should not be deployed into safety-critical or production environments without independent security review, threat modeling, hardening and operational testing.
+HARP is active development. It has **not been represented as independently audited**. Do not connect this MVP directly to safety-critical or production infrastructure without independent security review, hardening, secure key management, monitoring, incident response and operational testing.
+
+See [SECURITY.md](./SECURITY.md).
 
 ## Use Cases
 
 | Sector | Example |
 |---|---|
-| 🏭 Industrial IoT | Sensor integrity, gateway anomalies, operational evidence |
-| 🏙 Smart infrastructure | Connected infrastructure monitoring and incident timelines |
+| 🏭 Industrial IoT | Device integrity, anomalies and operational evidence |
+| 🏙 Smart infrastructure | Connected-device monitoring and incident timelines |
 | 🚚 Logistics | Asset telemetry and verifiable incident evidence |
-| 🏥 Medical environments | Equipment integrity monitoring and audit evidence |
-| ⚡ Critical infrastructure | Edge anomaly detection and security-event correlation |
+| 🏥 Medical environments | Equipment integrity and audit workflows |
+| ⚡ Critical infrastructure | Edge detection and security-event correlation |
 
 ## Technology Stack
 
-- Hedera Hashgraph
-- Hedera Consensus Service
-- Optional Hedera Token Service / EVM integrations
-- Edge / IoT computing
-- HTML, CSS and JavaScript for the current dashboard MVP
-- REST / WebSocket integration points
-- Docker-ready architecture
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React
+- Motion
+- Express / Node.js integration boundary
+- Hedera HCS / HTS / EVM integration boundaries
+- Google GenAI integration boundary
 - GitHub
-- Vercel
+- Vercel-compatible frontend build
 
 ## Repository Structure
 
 ```text
 hedera-harp/
-├── agents/              # Edge-agent implementation boundary
-├── api/                 # API integration boundary
-├── architecture/        # Architecture assets and diagrams
-├── assets/              # Static project assets
-├── dashboard/           # Dashboard application assets
+├── src/
+│   ├── components/      # UI modules
+│   ├── services/        # Mock/integration service boundaries
+│   ├── types/           # Protocol and auth types
+│   └── utils/           # Browser/device helpers
+├── architecture/        # Architecture assets
+├── agents/              # Future edge-agent boundary
+├── api/                 # Future API boundary
 ├── docs/                # Technical documentation
-├── scripts/             # Operational scripts
-├── security/            # Security policies and threat-model material
-├── tests/               # Automated tests
-├── .github/             # CI and repository automation
-├── index.html           # Public HARP dashboard/demo
-├── app.js               # Demo dashboard behavior
-├── styles.css           # Dashboard styles
-├── LICENSE              # Full MIT license
-├── SECURITY.md          # Security policy
+├── security/            # Security material
+├── tests/               # Future automated tests
+├── .github/             # CI configuration
+├── index.html
+├── package.json
+├── server.ts
+├── tsconfig.json
+├── vite.config.ts
+├── SECURITY.md
+├── LICENSE
 └── README.md
 ```
 
-## Roadmap
-
-### Phase 1 — Foundation
-- [x] Architecture definition
-- [x] HCS integration boundary
-- [x] Security dashboard MVP
-- [x] MIT licensing
-- [ ] Working HARP edge-agent prototype
-- [ ] Event schema package
-
-### Phase 2 — Detection & Evidence
-- [ ] Real telemetry ingestion
-- [ ] Rule engine
-- [ ] Device identity and key management
-- [ ] HCS testnet integration
-- [ ] Incident evidence explorer
-- [ ] Automated CI security checks
-
-### Phase 3 — Advanced Security
-- [ ] Behavioral anomaly detection
-- [ ] Predictive risk models
-- [ ] Digital-twin security views
-- [ ] Multi-organization federation
-- [ ] Independent security assessment
-- [ ] Production deployment playbook
-
 ## Local Development
 
-This MVP has no build step.
+Requirements: Node.js 20+.
 
 ```bash
 git clone https://github.com/srbisnes/hedera-harp.git
 cd hedera-harp
-
-# Serve locally with any static HTTP server.
-python -m http.server 8080
+npm install
+npm run lint
+npm run build
+npm run dev
 ```
 
-Open `http://localhost:8080`.
+The Vite development server will expose the application locally. For production deployment, use the Vite build output (`dist/`) with a Vercel-compatible configuration.
 
-For production integrations, keep credentials and network configuration outside the repository.
+## Vercel Deployment
+
+The project is Vite-based and can be deployed from the repository with:
+
+- **Framework preset:** Vite
+- **Install command:** `npm install`
+- **Build command:** `npm run build`
+- **Output directory:** `dist`
+- **Node.js:** 20+
+
+Do not commit API keys, private keys, production credentials or customer telemetry.
+
+## Roadmap
+
+### Phase 1 — Foundation
+- [x] Architecture and interactive MVP
+- [x] MIT license
+- [x] Security policy
+- [x] Device/sensor dashboard
+- [x] HCS integration boundary
+- [ ] Formal event schema
+- [ ] Real HARP edge agent
+
+### Phase 2 — Detection & Evidence
+- [ ] Authenticated telemetry ingestion
+- [ ] Rule engine
+- [ ] Device identity and key rotation
+- [ ] HCS testnet integration
+- [ ] Incident evidence explorer
+- [ ] CI security scanning
+- [ ] Automated regression tests
+
+### Phase 3 — Production Readiness
+- [ ] Behavioral anomaly detection
+- [ ] Predictive risk models
+- [ ] Multi-organization federation
+- [ ] Independent security assessment
+- [ ] Production deployment playbook
+- [ ] SLA/observability model
 
 ## Contributing
 
 1. Fork the repository.
 2. Create a feature branch:
+   ```bash
+   git checkout -b feature/your-feature
+   ```
+3. Make focused changes.
+4. Run `npm run lint` and `npm run build`.
+5. Commit and open a Pull Request.
 
-```bash
-git checkout -b feature/your-feature
-```
-
-3. Make focused changes and add tests where behavior changes.
-4. Commit using a clear message:
-
-```bash
-git commit -m "feat: add edge event validation"
-```
-
-5. Push the branch and open a Pull Request.
-
-Please do not submit credentials, private keys, customer telemetry or other sensitive information.
+Never submit credentials, private keys or sensitive telemetry.
 
 ## License
 
-HARP is released under the MIT License. See [LICENSE](./LICENSE).
+Released under the MIT License. See [LICENSE](./LICENSE).
 
 ## Author
 
-**ElCryptoBoy**  
-Founder & Builder
+**ElCryptoBoy** — Founder & Builder
 
 - GitHub: [@srbisnes](https://github.com/srbisnes)
-- Focus: Web3, blockchain, AI and security-oriented product development
+- Focus: Web3, blockchain, AI, IoT and security-oriented product development
 
 ---
 
