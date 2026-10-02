@@ -145,6 +145,7 @@ Requirements: Node.js 20+.
 git clone https://github.com/srbisnes/hedera-harp.git
 cd hedera-harp
 npm install
+npm run test
 npm run lint
 npm run build
 npm run dev
