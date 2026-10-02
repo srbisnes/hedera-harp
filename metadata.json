@@ -1,0 +1,6 @@
+{
+  "name": "Hedera Shield Protocol - IoT Mobile Manager",
+  "description": "Aplicación móvil para la gestión descentralizada y segura de dispositivos IoT de contraespionaje acústico con Hedera Consensus Service, autenticación biométrica y monitoreo de sensores en tiempo real.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

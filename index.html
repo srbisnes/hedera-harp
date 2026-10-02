@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Hedera Shield Protocol - IoT Mobile Manager</title>
+    <meta name="description" content="Aplicación móvil para la gestión descentralizada y segura de dispositivos IoT de contraespionaje acústico con Hedera Consensus Service, autenticación biométrica y monitoreo de sensores en tiempo real." />
+    <meta property="og:title" content="Hedera Shield Protocol - IoT Mobile Manager" />
+    <meta property="og:description" content="Aplicación móvil para la gestión descentralizada y segura de dispositivos IoT de contraespionaje acústico con Hedera Consensus Service, autenticación biométrica y monitoreo de sensores en tiempo real." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#090d16" />
+    <script>
+      (function () {
+        try {
+          var rawFetch = window.fetch;
+          var currentFetch = typeof rawFetch === 'function' ? rawFetch.bind(window) : rawFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function () {
+              return currentFetch;
+            },
+            set: function (newFetch) {
+              currentFetch = typeof newFetch === 'function' ? newFetch.bind(window) : newFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          try {
+            var protoFetch = Window.prototype.fetch;
+            var currentProtoFetch = typeof protoFetch === 'function' ? protoFetch.bind(window) : protoFetch;
+            Object.defineProperty(Window.prototype, 'fetch', {
+              get: function () {
+                return currentProtoFetch;
+              },
+              set: function (newFetch) {
+                currentProtoFetch = typeof newFetch === 'function' ? newFetch.bind(window) : newFetch;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (err) {}
+        }
+
+        try {
+          if (window.navigator && window.navigator.sendBeacon) {
+            var rawBeacon = window.navigator.sendBeacon;
+            var currentBeacon = typeof rawBeacon === 'function' ? rawBeacon.bind(window.navigator) : rawBeacon;
+            Object.defineProperty(window.navigator, 'sendBeacon', {
+              get: function () {
+                return currentBeacon;
+              },
+              set: function (nb) {
+                currentBeacon = typeof nb === 'function' ? nb.bind(window.navigator) : nb;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (err2) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

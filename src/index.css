@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #06090f;
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+
+  .font-display {
+    font-family: 'Chakra Petch', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+}
+
+/* Custom cyber scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #090e17;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0ea5e9;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes ultrasonic-wave {
+  0% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.08); }
+  100% { opacity: 0.3; transform: scale(1); }
+}
+
+.animate-ultrasonic {
+  animation: ultrasonic-wave 1.4s ease-in-out infinite;
+}
+
+/* Cyber grid background */
+.bg-grid-cyber {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(14, 165, 233, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+}
