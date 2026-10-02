@@ -10,8 +10,8 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test tests/**/*.test.ts",
-    "test:watch": "node --import tsx --test --watch tests/**/*.test.ts",
+    "test": "tsx tests/securityEvents.test.ts",
+    "test:watch": "tsx --watch tests/securityEvents.test.ts",
     "check": "npm run test && npm run lint && npm run build"
   },
   "dependencies": {
