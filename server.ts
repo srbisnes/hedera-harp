@@ -1,132 +1,138 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+const APP_ORIGIN = process.env.APP_ORIGIN || `http://localhost:${PORT}`;
+const AI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '32kb' }));
 
-// Initialize Gemini API if key is available
-let ai: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  try {
-    ai = new GoogleGenAI();
-  } catch (err) {
-    console.warn('Could not initialize GoogleGenAI with environment key:', err);
-  }
+// Minimal security headers for the demo server. A production edge should add a full CSP/HSTS policy.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+// Simple in-memory limiter for the demo endpoint. Use a shared gateway/Redis limiter in production.
+const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(limit: number, windowMs: number) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const now = Date.now();
+    const key = req.ip || 'unknown';
+    const bucket = requestBuckets.get(key);
+    if (!bucket || bucket.resetAt <= now) {
+      requestBuckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (bucket.count >= limit) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
+    }
+    bucket.count += 1;
+    return next();
+  };
 }
 
-// Swarm Chat API Endpoint
-app.post('/api/swarm-chat', async (req, res) => {
-  const { query, context } = req.body;
+let ai: GoogleGenAI | null = null;
+if (process.env.GEMINI_API_KEY) {
+  ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+}
+
+type SwarmContext = {
+  activeNodes?: number;
+  totalNodes?: number;
+  tamperedNodes?: number;
+  escrowsCount?: number;
+};
+
+function normalizeQuery(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 2000);
+}
+
+function normalizeContext(value: unknown): SwarmContext {
+  if (!value || typeof value !== 'object') return {};
+  const context = value as Record<string, unknown>;
+  return {
+    activeNodes: Number.isFinite(Number(context.activeNodes)) ? Number(context.activeNodes) : 0,
+    totalNodes: Number.isFinite(Number(context.totalNodes)) ? Number(context.totalNodes) : 0,
+    tamperedNodes: Number.isFinite(Number(context.tamperedNodes)) ? Number(context.tamperedNodes) : 0,
+    escrowsCount: Number.isFinite(Number(context.escrowsCount)) ? Number(context.escrowsCount) : 0,
+  };
+}
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, service: 'harp-api', version: '0.1.0' });
+});
+
+app.post('/api/swarm-chat', rateLimit(30, 60_000), async (req, res) => {
+  const query = normalizeQuery(req.body?.query);
+  const context = normalizeContext(req.body?.context);
 
   if (!query) {
-    return res.status(400).json({ error: 'Query is required' });
+    return res.status(400).json({ error: 'Query is required.' });
   }
 
-  // If Gemini API is available and initialized, generate intelligent response
-  if (ai && process.env.GEMINI_API_KEY) {
+  if (ai) {
     try {
-      const systemInstruction = `Eres el Enjambre de Agentes de Hedera Shield Protocol (HSP), una infraestructura DePIN de contraespionaje acústico y gobernanza confidencial sobre Hedera Hashgraph.
-El sistema combina:
-1. Hardware Edge: ESP32-S3 con enclave seguro TEE (ATECC608B), transductores piezoeléctricos ultrasónicos a 25.0 kHz para saturar diafragmas de micrófonos MEMS y enmascaramiento Voice-Mix (ruido rosa).
-2. Hedera Consensus Service (HCS Topic 0.0.654321): telemetría de latidos (heartbeats) firmada con ECDSA, timestamp inmutable y costo fijo de $0.0001 USD.
-3. Hedera Smart Contract Service (HSCS): Contrato HederaShieldEscrow.sol que solo libera depósitos de HBAR si HCS certifica un entorno físicamente blindado (Proof-of-Physical-Shielding, PoPS).
-4. Seguridad móvil: Autenticación con Google OAuth, candado biométrico (TouchID/FaceID) y centro de notificaciones en tiempo real para sensores.
-
-Contexto actual de la app:
-- Nodos activos: ${context?.activeNodes || 0} de ${context?.totalNodes || 3}
-- Nodos con alerta de sabotaje: ${context?.tamperedNodes || 0}
-- Acuerdos Escrow activos: ${context?.escrowsCount || 2}
-
-Tu misión es asesorar y guiar al usuario en español respondiendo:
-- Por qué y para qué sirve HSP.
-- Cómo se usa cada función (panel de nodos, frecuencia PWM, sensores, escrow, biometría, Google login).
-- De qué manera protege reuniones de juntas directivas, mesas OTC y comités DAO.
-- Recomendar las próximas acciones operativas dentro de la app.
-Estructura tu respuesta de forma atractiva con Markdown, destacando aportes de los agentes:
-- 🤖 Coordinador HSP
-- 🛡️ Centinela DePIN
-- ⚡ Hashgraph Oracle
-- 🔐 Guardián Cripto`;
-
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: AI_MODEL,
         contents: query,
         config: {
-          systemInstruction,
+          systemInstruction:
+            'You are the HARP security-console assistant. Explain the architecture, telemetry, incident workflow, evidence anchoring and Hedera integration boundaries. Treat hardware, authentication, biometrics, HCS and smart contracts as simulated unless the user explicitly provides evidence of a live integration. Never claim that the MVP is audited, production-ready, or capable of guaranteeing physical security. Answer in Spanish.',
         },
       });
 
-      const responseText = response.text || '';
-
-      return res.json({
-        text: responseText,
-        agentContributions: [
-          {
-            agentId: 'agent-coordinator',
-            agentName: 'Coordinador HSP',
-            agentRole: 'Guía General',
-            snippet: 'Análisis sintetizado del Enjambre de Agentes con inteligencia generativa en tiempo real.',
-          },
-          {
-            agentId: 'agent-depin',
-            agentName: 'Centinela DePIN',
-            agentRole: 'Hardware IoT',
-            snippet: 'Parámetros de transductores ultrasónicos y sensores verificados.',
-          },
-        ],
-      });
-    } catch (apiError) {
-      console.warn('Gemini API call failed, falling back to local swarm deliberation:', apiError);
+      const responseText = response.text?.trim();
+      if (responseText) {
+        return res.json({
+          text: responseText,
+          mode: 'ai',
+          context,
+        });
+      }
+    } catch (error) {
+      console.warn('AI request failed; using deterministic fallback.', error);
     }
   }
 
-  // Fallback response if API key is absent or errored
   return res.json({
-    text: `El Enjambre de Agentes de Hedera Shield Protocol ha recibido tu consulta sobre: **"${query}"**.
-
-### 🛡️ Propósito y Funcionalidad:
-Hedera Shield Protocol (HSP) fue creado para garantizar que las deliberaciones ejecutivas, negociaciones OTC y votaciones multisig de DAOs ocurran en un ambiente físicamente blindado contra micrófonos espías y grabadoras de smartphones.
-
-1. **¿Por qué sirve?**
-   Los bloqueadores analógicos comunes no proveen pruebas. HSP emite atestaciones firmadas criptográficamente a **Hedera Consensus Service (HCS)** a **$0.0001 USD**, generando una prueba matemática inmutable de que nadie pudo grabar la conversación.
-
-2. **¿Para qué sirve?**
-   Protege secretos comerciales, transacciones financieras y votos de gobernanza. El contrato inteligente \`HederaShieldEscrow.sol\` solo liquida fondos si la atestación física de la sala se mantuvo ininterrumpida.
-
-3. **¿Cómo se usa?**
-   - Accede a la pestaña **Nodos** para activar la emisión a 25 kHz.
-   - Revisa en **Sensores** el espectrograma en tiempo real y el circuito anti-sabotaje.
-   - En **Hedera**, gestiona los depósitos de fondos condicionados a la privacidad física.
-   - Usa tu cuenta de **Google** y el sensor biométrico para autorizar transacciones críticas.`,
+    mode: 'demo',
+    context,
+    text:
+      `HARP recibió tu consulta: **"${query}"**.\\n\\n` +
+      `Estado demo: ${context.activeNodes || 0}/${context.totalNodes || 0} nodos activos, ` +
+      `${context.tamperedNodes || 0} alertas de integridad y ${context.escrowsCount || 0} sesiones de evidencia.\\n\\n` +
+      'El panel permite explorar telemetría, simulación de incidentes y el flujo de evidencia orientado a Hedera. Las integraciones de hardware, autenticación y blockchain deben conectarse y auditarse antes de producción.',
     agentContributions: [
       {
         agentId: 'agent-coordinator',
-        agentName: 'Coordinador HSP',
-        agentRole: 'Guía General',
-        snippet: 'Soporte y asesoramiento operativo en tiempo real disponible para todos los módulos.',
+        agentName: 'HARP Coordinator',
+        agentRole: 'Security Operations',
+        snippet: 'Resume el estado y guía la operación del MVP.',
       },
       {
         agentId: 'agent-hedera',
-        agentName: 'Hashgraph Oracle',
-        agentRole: 'Hedera HCS',
-        snippet: 'Hedera Consensus Topic 0.0.654321 validando latidos criptográficos.',
+        agentName: 'Hedera Evidence',
+        agentRole: 'Consensus & Evidence',
+        snippet: 'Explica el límite entre simulación y evidencia realmente anclada en Hedera.',
       },
     ],
   });
 });
 
-// User profile API mock/support
-app.get('/api/auth/google/status', (_req, res) => {
-  res.json({
-    provider: 'google',
-    status: 'ready',
-    clientId: 'google-depin-hedera-shield.apps.googleusercontent.com',
-  });
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled server error:', err);
+  res.status(500).json({ error: 'Internal server error.' });
 });
 
 async function startServer() {
@@ -141,8 +147,12 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Hedera Shield Protocol Server active on http://0.0.0.0:${PORT}`);
+    console.log(`HARP server listening on 0.0.0.0:${PORT}`);
+    console.log(`Configured application origin: ${APP_ORIGIN}`);
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('Failed to start HARP:', error);
+  process.exit(1);
+});
