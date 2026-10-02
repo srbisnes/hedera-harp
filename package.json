@@ -9,7 +9,10 @@
     "build": "vite build",
     "start": "node server.ts",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "test:watch": "node --import tsx --test --watch tests/**/*.test.ts",
+    "check": "npm run test && npm run lint && npm run build"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
