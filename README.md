@@ -126,12 +126,6 @@ hedera-harp/
 │   ├── services/        # Mock/integration service boundaries
 │   ├── types/           # Protocol and auth types
 │   └── utils/           # Browser/device helpers
-├── architecture/        # Architecture assets
-├── agents/              # Future edge-agent boundary
-├── api/                 # Future API boundary
-├── docs/                # Technical documentation
-├── security/            # Security material
-├── tests/               # Future automated tests
 ├── .github/             # CI configuration
 ├── index.html
 ├── package.json
@@ -219,7 +213,7 @@ Released under the MIT License. See [LICENSE](./LICENSE).
 
 **ElCryptoBoy** — Founder & Builder
 
-- GitHub: [@srbisnes](https://github.com/srbisnes)
+- GitHub: [repository](https://github.com/srbisnes/hedera-harp)
 - Focus: Web3, blockchain, AI, IoT and security-oriented product development
 
 ---
