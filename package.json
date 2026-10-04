@@ -10,9 +10,9 @@
     "start": "node server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/securityEvents.test.ts",
-    "test:hcs": "tsx tests/hcs.integration.test.ts",
-    "test:watch": "tsx --watch tests/securityEvents.test.ts",
+    "test": "tsx --test tests/securityEvents.test.ts tests/protocol.test.ts tests/copilot.test.ts",
+    "test:hcs": "tsx --test tests/hcs.integration.test.ts",
+    "test:watch": "tsx --watch --test tests/securityEvents.test.ts tests/protocol.test.ts tests/copilot.test.ts",
     "check": "npm run test && npm run lint && npm run build"
   },
   "dependencies": {
