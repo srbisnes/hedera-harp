@@ -1,5 +1,4 @@
-import { IoTShieldNode, HCSMessage, EscrowSession, NotificationItem } from '../types/protocol';
-import { playTechChirp } from '../utils/audioHaptic';
+import { IoTShieldNode, HCSMessage, EscrowSession, NotificationItem, HCSAnchorResultView } from '../types/protocol';
 
 export const INITIAL_NODES: IoTShieldNode[] = [
   {
@@ -8,7 +7,7 @@ export const INITIAL_NODES: IoTShieldNode[] = [
     location: 'Piso 14 · Sede Corporativa',
     status: 'SHIELDING_ACTIVE',
     ultrasonicFrequencyKhz: 25.0,
-    pwmDutyCycle: 128, // 50%
+    pwmDutyCycle: 128,
     voiceMixActive: true,
     voiceMixLevel: 65,
     acousticDecibels: 48.5,
@@ -82,6 +81,7 @@ export const INITIAL_HCS_MESSAGES: HCSMessage[] = [
     signature: '0x8d904b77c3a0980...910a1b',
     feeUSD: 0.0001,
     createdTime: new Date(Date.now() - 3000),
+    mode: 'mock',
   },
   {
     sequenceNumber: 10427,
@@ -94,6 +94,7 @@ export const INITIAL_HCS_MESSAGES: HCSMessage[] = [
     signature: '0x4f128bc9910d55e...e88102',
     feeUSD: 0.0001,
     createdTime: new Date(Date.now() - 13000),
+    mode: 'mock',
   },
   {
     sequenceNumber: 10426,
@@ -106,6 +107,7 @@ export const INITIAL_HCS_MESSAGES: HCSMessage[] = [
     signature: '0x99a01f5c4b31278...aa9012',
     feeUSD: 0.0001,
     createdTime: new Date(Date.now() - 23000),
+    mode: 'mock',
   },
 ];
 
@@ -171,7 +173,6 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-// Helper to generate a realistic signature
 export function generateRandomHex(length: number): string {
   const chars = '0123456789abcdef';
   let result = '0x';
@@ -181,7 +182,54 @@ export function generateRandomHex(length: number): string {
   return result;
 }
 
-// Request real browser Notification permission if supported
+let mockSequence = 10429;
+
+/** Mock anchor used when HEDERA_OPERATOR_* credentials are not configured. */
+export function mockAnchorEvidence(input: {
+  eventId: string;
+  deviceId: string;
+  severity: string;
+  type: string;
+}): HCSAnchorResultView {
+  const sequenceNumber = mockSequence++;
+  const now = Date.now() / 1000;
+  const consensusTimestamp = `${Math.floor(now)}.${String(Math.floor((now % 1) * 1e9)).padStart(9, '0')}`;
+  const evidenceHash = generateRandomHex(32).slice(2);
+
+  return {
+    topicId: '0.0.654321',
+    sequenceNumber,
+    consensusTimestamp,
+    runningHash: generateRandomHex(32),
+    transactionId: `0.0.0@${Math.floor(now)}.${sequenceNumber}`,
+    evidenceHash,
+    mode: 'mock',
+  };
+}
+
+export function mockToHCSMessage(
+  result: HCSAnchorResultView,
+  deviceId: string,
+  status: HCSMessage['status'] = 'HEARTBEAT',
+  frequency = 25.0,
+): HCSMessage {
+  return {
+    sequenceNumber: result.sequenceNumber,
+    consensusTimestamp: result.consensusTimestamp,
+    topicId: result.topicId,
+    runningHash: result.runningHash,
+    deviceId,
+    status,
+    frequency,
+    signature: generateRandomHex(20),
+    feeUSD: 0.0001,
+    createdTime: new Date(),
+    transactionId: result.transactionId,
+    evidenceHash: result.evidenceHash,
+    mode: 'mock',
+  };
+}
+
 export async function requestBrowserNotificationPermission(): Promise<boolean> {
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
@@ -197,10 +245,7 @@ export async function requestBrowserNotificationPermission(): Promise<boolean> {
 export function sendBrowserPushNotification(title: string, body: string) {
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification(title, {
-        body,
-        icon: '/favicon.ico',
-      });
+      new Notification(title, { body, icon: '/favicon.ico' });
     } catch {
       // Ignored
     }

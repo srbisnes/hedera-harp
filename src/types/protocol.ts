@@ -6,9 +6,9 @@ export interface IoTShieldNode {
   location: string;
   status: NodeStatus;
   ultrasonicFrequencyKhz: number;
-  pwmDutyCycle: number; // 0 to 255 (128 is 50%)
+  pwmDutyCycle: number;
   voiceMixActive: boolean;
-  voiceMixLevel: number; // 0 to 100%
+  voiceMixLevel: number;
   acousticDecibels: number;
   tamperCircuitSecure: boolean;
   batteryPercent: number;
@@ -34,6 +34,9 @@ export interface HCSMessage {
   signature: string;
   feeUSD: number;
   createdTime: Date;
+  transactionId?: string;
+  evidenceHash?: string;
+  mode?: 'mock' | 'live';
 }
 
 export interface EscrowSession {
@@ -69,4 +72,27 @@ export interface BiometricAuthState {
   isEnrolled: boolean;
   requireForCriticalActions: boolean;
   lastAuthTime: Date | null;
+}
+
+export type EvidenceSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface SecurityEvidencePayload {
+  v: 1;
+  eventId: string;
+  deviceId: string;
+  severity: EvidenceSeverity;
+  type: string;
+  hash: string;
+  ts: number;
+  teeSig?: string;
+}
+
+export interface HCSAnchorResultView {
+  topicId: string;
+  sequenceNumber: number;
+  consensusTimestamp: string;
+  runningHash: string;
+  transactionId: string;
+  evidenceHash: string;
+  mode: 'mock' | 'live';
 }
