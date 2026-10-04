@@ -37,7 +37,7 @@ IoT / Edge Devices
 └─────────────────────┘
 ```
 
-The current repository is an **interactive MVP/simulation**, not a production security platform or an independently audited system. This distinction is intentional: the UI demonstrates the operating model while the integration boundaries remain explicit.
+The current repository is an **interactive MVP** with an optional **live HCS integration**. Without Hedera credentials it runs fully in demo/simulation mode. This distinction is intentional: the UI demonstrates the operating model while production boundaries remain explicit.
 
 ## Current MVP
 
@@ -46,7 +46,7 @@ The React application currently includes:
 - 📡 IoT node/device management UI.
 - 📊 Sensor and telemetry dashboards.
 - 🧪 Security-event and incident simulations.
-- 🔗 Hedera Consensus Service (HCS) event-flow simulation.
+- 🔗 **Hedera Consensus Service (HCS)** — live testnet anchoring when credentials are set, otherwise mock.
 - 💰 Conditional escrow workflow simulation tied to security evidence.
 - 🔐 Biometric/critical-action UX simulation.
 - 🔔 Notifications and operator alerts.
@@ -57,25 +57,34 @@ The React application currently includes:
 
 ### Important implementation note
 
-The repository contains mock services for hardware, HCS and some authentication/agent interactions. They are **simulation boundaries**, not claims of live production infrastructure.
+Mock services remain for hardware, biometrics and some auth flows. **HCS can run live** when `HEDERA_OPERATOR_ID` and `HEDERA_OPERATOR_KEY` are configured (see [docs/HCS-INTEGRATION.md](./docs/HCS-INTEGRATION.md)).
 
-Before production use, replace mock services with authenticated integrations, define threat models and key-management procedures, add observability, and complete independent security testing.
+Before production use, complete independent security testing, harden key management, and add observability.
 
 ## Hedera Architecture
 
 ### Hedera Consensus Service
 
-HCS is the primary proposed trust primitive. HARP can use consensus messages to establish an ordered and timestamped record of selected security events.
+HCS is the primary trust primitive. HARP anchors **minimal evidence** (event id, device id, severity, type, SHA-256 hash, timestamp) via `TopicMessageSubmitTransaction`. Raw telemetry stays off-ledger.
 
-Raw telemetry should normally remain off-ledger. A production design should anchor only the minimum evidence required for independent verification, such as event identifiers, hashes and relevant metadata.
+| Mode | Condition | Behavior |
+|------|-----------|----------|
+| Demo | No operator keys | `mockAnchorEvidence` — local sequence/hash |
+| Live | Keys in `.env` | Real HCS topic create + submit on testnet/mainnet |
+
+API endpoints:
+
+- `GET /api/hcs/status` — configuration status
+- `GET /api/hcs/topic` — active topic id
+- `POST /api/hcs/anchor` — anchor security evidence
 
 ### Hedera Token Service
 
-HTS is an optional extension for use cases involving tokenized credentials, assets, incentives or other explicitly justified token primitives. It is not required for the core HARP event pipeline.
+HTS is an optional extension for tokenized credentials, assets or incentives. Not required for the core evidence pipeline.
 
 ### Hedera Smart Contracts / EVM
 
-Smart contracts can provide programmable verification or settlement workflows where required. The current MVP treats these as integration boundaries rather than claiming a production contract deployment.
+Smart contracts can provide programmable verification or settlement. The current MVP treats these as integration boundaries.
 
 ## Security Model
 
@@ -111,11 +120,10 @@ See [SECURITY.md](./SECURITY.md).
 - Tailwind CSS
 - Lucide React
 - Motion
-- Express / Node.js integration boundary
-- Hedera HCS / HTS / EVM integration boundaries
+- Express / Node.js
+- **@hashgraph/sdk** (HCS live integration)
 - Google GenAI integration boundary
-- GitHub
-- Vercel-compatible frontend build
+- GitHub + Vercel-compatible frontend build
 
 ## Repository Structure
 
@@ -123,17 +131,19 @@ See [SECURITY.md](./SECURITY.md).
 hedera-harp/
 ├── src/
 │   ├── components/      # UI modules
-│   ├── services/        # Mock/integration service boundaries
+│   ├── core/            # Security event schema & hashing
+│   ├── services/        # hederaHCS (live) + mocks
 │   ├── types/           # Protocol and auth types
-│   └── utils/           # Browser/device helpers
-├── .github/             # CI configuration
-├── index.html
+│   └── utils/
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── HCS-INTEGRATION.md
+│   └── ...
+├── tests/
+│   ├── securityEvents.test.ts
+│   └── hcs.integration.test.ts
+├── server.ts            # Express + Vite + HCS API
 ├── package.json
-├── server.ts
-├── tsconfig.json
-├── vite.config.ts
-├── SECURITY.md
-├── LICENSE
 └── README.md
 ```
 
@@ -144,6 +154,7 @@ Requirements: Node.js 20+.
 ```bash
 git clone https://github.com/srbisnes/hedera-harp.git
 cd hedera-harp
+cp .env.example .env
 npm install
 npm run test
 npm run lint
@@ -151,11 +162,23 @@ npm run build
 npm run dev
 ```
 
-The Vite development server will expose the application locally. For production deployment, use the Vite build output (`dist/`) with a Vercel-compatible configuration.
+### Optional: live HCS on testnet
+
+1. Get free credentials at [portal.hedera.com](https://portal.hedera.com/).
+2. Set in `.env`:
+
+```env
+HEDERA_NETWORK=testnet
+HEDERA_OPERATOR_ID=0.0.xxxxx
+HEDERA_OPERATOR_KEY=302e...
+```
+
+3. Restart `npm run dev`. First anchor creates a topic (log prints the id — save as `HEDERA_TOPIC_ID`).
+4. Run live test: `npm run test:hcs`
+
+Full guide: [docs/HCS-INTEGRATION.md](./docs/HCS-INTEGRATION.md).
 
 ## Vercel Deployment
-
-The project is Vite-based and can be deployed from the repository with:
 
 - **Framework preset:** Vite
 - **Install command:** `npm install`
@@ -163,7 +186,7 @@ The project is Vite-based and can be deployed from the repository with:
 - **Output directory:** `dist`
 - **Node.js:** 20+
 
-Do not commit API keys, private keys, production credentials or customer telemetry.
+For live HCS on Vercel, add `HEDERA_*` as **server-side** environment variables only. Do not commit keys or expose them as `VITE_*`.
 
 ## Roadmap
 
@@ -173,17 +196,17 @@ Do not commit API keys, private keys, production credentials or customer telemet
 - [x] Security policy
 - [x] Device/sensor dashboard
 - [x] HCS integration boundary
-- [ ] Formal event schema
+- [x] Formal event schema (`SecurityEvidence` + hash)
 - [ ] Real HARP edge agent
 
 ### Phase 2 — Detection & Evidence
 - [ ] Authenticated telemetry ingestion
 - [ ] Rule engine
 - [ ] Device identity and key rotation
-- [ ] HCS testnet integration
+- [x] **HCS testnet integration** (optional live mode)
 - [ ] Incident evidence explorer
 - [ ] CI security scanning
-- [ ] Automated regression tests
+- [x] Automated regression tests (+ optional HCS integration test)
 
 ### Phase 3 — Production Readiness
 - [ ] Behavioral anomaly detection
