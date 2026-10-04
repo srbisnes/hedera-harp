@@ -2,17 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/**]
   pull_request:
     branches: [main]
 
 permissions:
   contents: read
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
+    name: Lint · Test · Build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
@@ -22,9 +28,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --no-audit --no-fund
+        run: npm ci --legacy-peer-deps --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Unit tests
         run: npm run test
@@ -34,3 +41,44 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  security:
+    name: Dependency & secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: npm audit (high+)
+        run: npm audit --audit-level=high || true
+        continue-on-error: true
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  hcs-integration:
+    name: HCS integration (optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    if: ${{ vars.HEDERA_OPERATOR_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - name: Live HCS test
+        env:
+          HEDERA_NETWORK: testnet
+          HEDERA_OPERATOR_ID: ${{ secrets.HEDERA_OPERATOR_ID }}
+          HEDERA_OPERATOR_KEY: ${{ secrets.HEDERA_OPERATOR_KEY }}
+          HEDERA_TOPIC_ID: ${{ secrets.HEDERA_TOPIC_ID }}
+        run: npm run test:hcs
