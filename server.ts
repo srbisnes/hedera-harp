@@ -2,6 +2,14 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import {
+  anchorEvidence,
+  ensureTopic,
+  getHcsStatus,
+  isHcsConfigured,
+  type SecurityEvidence,
+} from './src/services/hederaHCS.ts';
+import { mockAnchorEvidence } from './src/services/mockHardwareHCS.ts';
 
 dotenv.config();
 
@@ -13,7 +21,6 @@ const AI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
 
-// Minimal security headers for the demo server. A production edge should add a full CSP/HSTS policy.
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -22,7 +29,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Simple in-memory limiter for the demo endpoint. Use a shared gateway/Redis limiter in production.
 const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 function rateLimit(limit: number, windowMs: number) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -70,7 +76,73 @@ function normalizeContext(value: unknown): SwarmContext {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'harp-api', version: '0.1.0' });
+  res.json({
+    ok: true,
+    service: 'harp-api',
+    version: '0.2.0',
+    hcs: getHcsStatus(),
+  });
+});
+
+app.get('/api/hcs/status', (_req, res) => {
+  res.json(getHcsStatus());
+});
+
+app.get('/api/hcs/topic', async (_req, res) => {
+  try {
+    if (!isHcsConfigured()) {
+      return res.json({
+        topicId: '0.0.654321',
+        mode: 'mock',
+        message: 'HCS credentials not configured; using demo topic.',
+      });
+    }
+    const tid = await ensureTopic();
+    return res.json({ topicId: tid.toString(), mode: 'live' });
+  } catch (err) {
+    console.error('HCS topic error:', err);
+    return res.status(500).json({
+      error: 'Topic unavailable',
+      detail: err instanceof Error ? err.message : 'unknown',
+    });
+  }
+});
+
+app.post('/api/hcs/anchor', rateLimit(20, 60_000), async (req, res) => {
+  try {
+    const body = req.body as Partial<SecurityEvidence>;
+    if (!body?.eventId || !body?.deviceId || !body?.type) {
+      return res.status(400).json({ error: 'eventId, deviceId and type are required' });
+    }
+
+    const evidence: SecurityEvidence = {
+      eventId: String(body.eventId),
+      deviceId: String(body.deviceId),
+      severity: (body.severity as SecurityEvidence['severity']) || 'medium',
+      type: String(body.type),
+      payload: body.payload && typeof body.payload === 'object' ? body.payload : {},
+      teeSignature: body.teeSignature ? String(body.teeSignature) : undefined,
+    };
+
+    if (isHcsConfigured()) {
+      const result = await anchorEvidence(evidence);
+      return res.json(result);
+    }
+
+    const mock = mockAnchorEvidence({
+      eventId: evidence.eventId,
+      deviceId: evidence.deviceId,
+      severity: evidence.severity,
+      type: evidence.type,
+    });
+    return res.json(mock);
+  } catch (err) {
+    console.error('HCS anchor error:', err);
+    return res.status(500).json({
+      error: 'Failed to anchor evidence on HCS',
+      detail: err instanceof Error ? err.message : 'unknown',
+    });
+  }
 });
 
 app.post('/api/swarm-chat', rateLimit(30, 60_000), async (req, res) => {
@@ -94,11 +166,7 @@ app.post('/api/swarm-chat', rateLimit(30, 60_000), async (req, res) => {
 
       const responseText = response.text?.trim();
       if (responseText) {
-        return res.json({
-          text: responseText,
-          mode: 'ai',
-          context,
-        });
+        return res.json({ text: responseText, mode: 'ai', context });
       }
     } catch (error) {
       console.warn('AI request failed; using deterministic fallback.', error);
@@ -109,9 +177,9 @@ app.post('/api/swarm-chat', rateLimit(30, 60_000), async (req, res) => {
     mode: 'demo',
     context,
     text:
-      `HARP recibió tu consulta: **"${query}"**.\\n\\n` +
+      `HARP recibió tu consulta: **"${query}"**.\n\n` +
       `Estado demo: ${context.activeNodes || 0}/${context.totalNodes || 0} nodos activos, ` +
-      `${context.tamperedNodes || 0} alertas de integridad y ${context.escrowsCount || 0} sesiones de evidencia.\\n\\n` +
+      `${context.tamperedNodes || 0} alertas de integridad y ${context.escrowsCount || 0} sesiones de evidencia.\n\n` +
       'El panel permite explorar telemetría, simulación de incidentes y el flujo de evidencia orientado a Hedera. Las integraciones de hardware, autenticación y blockchain deben conectarse y auditarse antes de producción.',
     agentContributions: [
       {
@@ -149,6 +217,12 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`HARP server listening on 0.0.0.0:${PORT}`);
     console.log(`Configured application origin: ${APP_ORIGIN}`);
+    const hcs = getHcsStatus();
+    console.log(
+      hcs.configured
+        ? `[HARP HCS] Live mode — network=${hcs.network} operator=${hcs.operatorId}`
+        : '[HARP HCS] Demo mode — set HEDERA_OPERATOR_ID + HEDERA_OPERATOR_KEY for live anchoring',
+    );
   });
 }
 
